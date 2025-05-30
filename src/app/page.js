@@ -1,102 +1,145 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function CFChallengePage() {
-  const [turnstileReady, setTurnstileReady] = useState(false)
+export default function LoadingPage() {
+  const [isPressed, setIsPressed] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [isCompleted, setIsCompleted] = useState(false)
+  const intervalRef = useRef(null)
   const router = useRouter()
 
-  const rayId = Array(16).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')
+  const circumference = 2 * Math.PI * 45
+  const strokeDashoffset = circumference - (progress / 100) * circumference
 
-  useEffect(() => {
-    const script = document.createElement('script')
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-    script.async = true
-    script.defer = true
-    script.onload = () => setTurnstileReady(true)
-    document.head.appendChild(script)
-    return () => document.head.removeChild(script)
-  }, [])
+  const startProgress = () => {
+    if (isCompleted) return
+    setIsPressed(true)
+    setProgress(0)
 
-  useEffect(() => {
-    if (turnstileReady && window.turnstile && document.getElementById('cf-turnstile')) {
-      window.turnstile.render('#cf-turnstile', {
-        sitekey: '0x4AAAAAABehpPA74WTKx33D',
-        callback: async (token) => {
-          try {
-            const res = await fetch('/api/turnstile', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token }),
-            })
-
-            if (res.ok) {
-              setTimeout(() => {
-                router.push('/loading')
-              }, 2500)
-            } else {
-              alert('Verification failed.')
-              window.turnstile.reset()
-            }
-          } catch (e) {
-            alert('Network error.')
-            window.turnstile.reset()
-          }
-        },
-        theme: 'light'
+    intervalRef.current = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(intervalRef.current)
+          setIsCompleted(true)
+          setTimeout(() => {
+            router.push('/verify-email')
+          }, 1000)
+          return 100
+        }
+        return prev + 2
       })
+    }, 100)
+  }
+
+  const stopProgress = () => {
+    if (isCompleted) return
+    setIsPressed(false)
+    setProgress(0)
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
     }
-  }, [turnstileReady])
+  }
 
   return (
-    <html lang="en-US">
-      <head>
-        <title>Just a moment...</title>
-        <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
-        <meta httpEquiv="X-UA-Compatible" content="IE=Edge" />
-        <meta name="robots" content="noindex,nofollow" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <style>{`
-          *{box-sizing:border-box;margin:0;padding:0}
-          html{line-height:1.15;-webkit-text-size-adjust:100%;color:#313131;
-            font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,
-            Roboto,Helvetica Neue,Arial,Noto Sans,sans-serif,
-            Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji}
-          body{display:flex;flex-direction:column;height:100vh;min-height:100vh}
-          .main-content{margin:8rem auto;max-width:60rem;padding-left:1.5rem;padding-right:1.5rem;text-align:center}
-          .h2{font-size:1.5rem;font-weight:500;line-height:2.25rem;margin-bottom:1rem}
-          .desc{color:#6c6c6c;font-size:.9rem}
-          @media (width <= 720px){
-            .main-content{margin-top:4rem}
-            .h2{font-size:1.25rem;line-height:1.5rem}
-          }
-          @media (prefers-color-scheme:dark){
-            body{background-color:#222;color:#d9d9d9}
-          }
-          .footer{font-size:0.75rem;color:#aaa;margin-top:2rem}
-        `}</style>
-      </head>
-      <body>
-        <main className="main-content">
-          <noscript>
-            <div className="h2">
-              <span id="challenge-error-text">Enable JavaScript and cookies to continue</span>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center p-4">
+      <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-12 max-w-md w-full text-center border border-white/50">
+        <div className="mb-8">
+          <div className="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Security Verification</h1>
+          <p className="text-gray-600 text-sm">Hold the button for 5 seconds to continue</p>
+        </div>
+
+        <div className="relative mb-8">
+          <button
+            className={`relative w-24 h-24 rounded-full transition-all duration-200 focus:outline-none ${
+              isCompleted 
+                ? 'bg-green-500 shadow-lg shadow-green-200 scale-105' 
+                : isPressed 
+                  ? 'bg-blue-600 shadow-lg shadow-blue-200 scale-95' 
+                  : 'bg-blue-500 shadow-lg shadow-blue-200 hover:bg-blue-600 hover:scale-105'
+            }`}
+            onMouseDown={startProgress}
+            onMouseUp={stopProgress}
+            onMouseLeave={stopProgress}
+            onTouchStart={startProgress}
+            onTouchEnd={stopProgress}
+            disabled={isCompleted}
+          >
+            <div className="text-white font-bold text-sm">
+              {isCompleted ? (
+                <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                'HOLD'
+              )}
             </div>
-          </noscript>
-          <div className="h2">Just a moment...</div>
-          <p className="desc">Checking if the site connection is secure</p>
+          </button>
 
-          <div style={{ marginTop: '2rem' }}>
-            <div id="cf-turnstile" style={{ display: 'inline-block' }} />
-          </div>
+          <svg
+            className="absolute inset-0 w-24 h-24 -rotate-90 pointer-events-none"
+            viewBox="0 0 100 100"
+          >
+            <circle
+              cx="50"
+              cy="50"
+              r="45"
+              fill="none"
+              stroke="#e5e7eb"
+              strokeWidth="6"
+            />
+            <circle
+              cx="50"
+              cy="50"
+              r="45"
+              fill="none"
+              stroke={isCompleted ? '#10b981' : '#3b82f6'}
+              strokeWidth="6"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              className="transition-all duration-100 ease-linear drop-shadow-sm"
+            />
+          </svg>
+        </div>
 
-          <div className="footer">
-            <p>Performance &amp; security by Cloudflare</p>
-            <p>Ray ID: {rayId}</p>
-          </div>
-        </main>
-      </body>
-    </html>
+        <div className="space-y-2">
+          {isCompleted ? (
+            <div className="text-green-600">
+              <div className="font-semibold">Verification Complete!</div>
+              <div className="text-sm opacity-75">Redirecting...</div>
+            </div>
+          ) : isPressed ? (
+            <div className="text-blue-600">
+              <div className="font-semibold">Hold steady...</div>
+              <div className="text-sm">{Math.floor(progress / 20)}/5 seconds</div>
+            </div>
+          ) : (
+            <div className="text-gray-600">
+              <div className="font-medium">Press and hold</div>
+              <div className="text-sm opacity-75">Complete the verification</div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-8 flex justify-center space-x-2">
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={i}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                i < Math.floor(progress / 20) 
+                  ? isCompleted ? 'bg-green-400' : 'bg-blue-400'
+                  : 'bg-gray-200'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
