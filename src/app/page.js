@@ -1,20 +1,17 @@
-'use client'
-
 import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 
 export default function LoadingPage() {
   const [isPressed, setIsPressed] = useState(false)
   const [progress, setProgress] = useState(0)
   const [isCompleted, setIsCompleted] = useState(false)
+  const [showRedirect, setShowRedirect] = useState(false)
   const intervalRef = useRef(null)
-  const router = useRouter()
 
   const circumference = 2 * Math.PI * 45
   const strokeDashoffset = circumference - (progress / 100) * circumference
 
   const startProgress = () => {
-    if (isCompleted) return
+    if (isCompleted || showRedirect) return
     setIsPressed(true)
     setProgress(0)
 
@@ -24,8 +21,11 @@ export default function LoadingPage() {
           clearInterval(intervalRef.current)
           setIsCompleted(true)
           setTimeout(() => {
-            router.push('/verify-email')
-          }, 1000)
+            setShowRedirect(true)
+            setTimeout(() => {
+              window.location.href = '/verify-email'
+            }, 1000)
+          }, 800)
           return 100
         }
         return prev + 2
@@ -34,7 +34,7 @@ export default function LoadingPage() {
   }
 
   const stopProgress = () => {
-    if (isCompleted) return
+    if (isCompleted || showRedirect) return
     setIsPressed(false)
     setProgress(0)
     if (intervalRef.current) {
@@ -43,47 +43,57 @@ export default function LoadingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center p-4">
-      <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-12 max-w-md w-full text-center border border-white/50">
-        <div className="mb-8">
-          <div className="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Security Verification</h1>
-          <p className="text-gray-600 text-sm">Hold the button for 5 seconds to continue</p>
+    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-purple-500 to-purple-600 flex items-center justify-center p-4">
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center border border-white/20">
+        
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-gray-800 mb-2">Initialize Connection</h1>
+          <p className="text-gray-600 text-sm">Press and hold the button for 5 seconds</p>
         </div>
 
-        <div className="relative mb-8">
+        <div className="relative mb-6 flex justify-center">
           <button
-            className={`relative w-24 h-24 rounded-full transition-all duration-200 focus:outline-none ${
+            className={`relative w-28 h-28 rounded-full transition-all duration-300 focus:outline-none transform ${
               isCompleted 
-                ? 'bg-green-500 shadow-lg shadow-green-200 scale-105' 
+                ? 'bg-green-500 shadow-xl shadow-green-200/50 scale-105' 
                 : isPressed 
-                  ? 'bg-blue-600 shadow-lg shadow-blue-200 scale-95' 
-                  : 'bg-blue-500 shadow-lg shadow-blue-200 hover:bg-blue-600 hover:scale-105'
+                  ? 'bg-purple-600 shadow-xl shadow-purple-300/50 scale-95' 
+                  : 'bg-purple-500 shadow-xl shadow-purple-300/50 hover:bg-purple-600 hover:scale-105'
             }`}
             onMouseDown={startProgress}
             onMouseUp={stopProgress}
             onMouseLeave={stopProgress}
             onTouchStart={startProgress}
             onTouchEnd={stopProgress}
-            disabled={isCompleted}
+            disabled={isCompleted || showRedirect}
           >
-            <div className="text-white font-bold text-sm">
-              {isCompleted ? (
-                <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
+            <div className="text-white font-semibold text-sm">
+              {showRedirect ? (
+                <div className="flex flex-col items-center">
+                  <svg className="w-6 h-6 mb-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span className="text-xs">Redirecting...</span>
+                </div>
+              ) : isCompleted ? (
+                <div className="flex flex-col items-center">
+                  <svg className="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-xs">Complete!</span>
+                </div>
               ) : (
-                'HOLD'
+                <div className="flex flex-col items-center">
+                  <span className="text-sm font-bold">Hold to</span>
+                  <span className="text-sm font-bold">Continue</span>
+                </div>
               )}
             </div>
           </button>
 
+
           <svg
-            className="absolute inset-0 w-24 h-24 -rotate-90 pointer-events-none"
+            className="absolute inset-0 w-28 h-28 -rotate-90 pointer-events-none"
             viewBox="0 0 100 100"
           >
             <circle
@@ -91,49 +101,61 @@ export default function LoadingPage() {
               cy="50"
               r="45"
               fill="none"
-              stroke="#e5e7eb"
-              strokeWidth="6"
+              stroke="rgba(255,255,255,0.2)"
+              strokeWidth="4"
             />
             <circle
               cx="50"
               cy="50"
               r="45"
               fill="none"
-              stroke={isCompleted ? '#10b981' : '#3b82f6'}
-              strokeWidth="6"
+              stroke={isCompleted ? '#10b981' : '#ffffff'}
+              strokeWidth="4"
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
               className="transition-all duration-100 ease-linear drop-shadow-sm"
+              style={{
+                filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.5))'
+              }}
             />
           </svg>
         </div>
 
-        <div className="space-y-2">
-          {isCompleted ? (
+
+        <div className="mb-6">
+          {showRedirect ? (
+            <div className="text-purple-600">
+              <div className="font-semibold">Redirecting to verify-email...</div>
+              <div className="text-sm opacity-75 mt-1">Please wait</div>
+            </div>
+          ) : isCompleted ? (
             <div className="text-green-600">
-              <div className="font-semibold">Verification Complete!</div>
-              <div className="text-sm opacity-75">Redirecting...</div>
+              <div className="font-semibold">Connection Established!</div>
+              <div className="text-sm opacity-75 mt-1">Preparing redirect...</div>
             </div>
           ) : isPressed ? (
-            <div className="text-blue-600">
+            <div className="text-purple-600">
               <div className="font-semibold">Hold steady...</div>
-              <div className="text-sm">{Math.floor(progress / 20)}/5 seconds</div>
+              <div className="text-sm mt-1">{Math.floor(progress / 20)}/5 seconds</div>
             </div>
           ) : (
             <div className="text-gray-600">
-              <div className="font-medium">Press and hold</div>
-              <div className="text-sm opacity-75">Complete the verification</div>
+              <div className="font-semibold">Ready</div>
+              <div className="text-sm opacity-75 mt-1">Press and hold to continue</div>
             </div>
           )}
         </div>
 
-        <div className="mt-8 flex justify-center space-x-2">
+
+        <div className="flex justify-center space-x-2">
           {[...Array(5)].map((_, i) => (
             <div
               key={i}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
                 i < Math.floor(progress / 20) 
-                  ? isCompleted ? 'bg-green-400' : 'bg-blue-400'
+                  ? isCompleted 
+                    ? 'bg-green-400 shadow-lg shadow-green-200' 
+                    : 'bg-purple-400 shadow-lg shadow-purple-200'
                   : 'bg-gray-200'
               }`}
             />
